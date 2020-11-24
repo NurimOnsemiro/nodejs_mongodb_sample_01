@@ -2,23 +2,48 @@ import mongoose, { Connection, Document, Model, Schema } from 'mongoose';
 
 const MONGO_URI: string = 'mongodb://127.0.0.1:27017/mam';
 
-const kittySchema = new Schema({
-    name: { type: String, required: true },
-});
-
+/**
+ * INFO: 다큐먼트 스키마. 반드시 Document를 상속받아야 한다.
+ */
 interface IKittySchema extends Document {
     name: string;
     speak(): void;
 }
 
+/**
+ * INFO: 모델 스키마. statics 메서드를 호출할 때 사용된다
+ */
+interface IKittyModelSchema extends Model<IKittySchema> {
+    cry(): void;
+}
+
+/**
+ * INFO: Kitten 콜렉션에 저장되는 데이터 형식 정의
+ */
+const kittySchema = new Schema({
+    name: { type: String, required: true },
+});
+
+/**
+ * INFO: 메서드는 DB에 저장되지 않지만 편의를 위해 구현할 수 있다.
+ * INFO: 인터페이스에 정의한 함수는 반드시 구현해야 한다.
+ * INFO: 메서드는 모델로 생성된 다큐먼트 인스턴스에서 호출될 수 있다
+ */
 kittySchema.methods.speak = function () {
     const greeting = this.name ? 'Meow name is ' + this.name : 'I Dont have a name';
     console.log(greeting);
 };
 
+/**
+ * INFO: statics 메서드는 모델에서 직접 호출할 수 있다
+ */
+kittySchema.statics.cry = function () {
+    console.log('Cry. This function can be called from Model');
+};
+
 //INFO: 콜렉션의 이름이 Kitten으로 저장되는 모델을 생성한다.
 //INFO: 이 모델을 통해 저장하는 모든 데이터는 Kitten 콜렉션에 저장된다. (대소문자 구분안함)
-const KittenModel = mongoose.model<IKittySchema>('Kitten', kittySchema);
+const KittenModel = mongoose.model<IKittySchema, IKittyModelSchema>('Kitten', kittySchema);
 
 /**
  * INFO: 몽고DB 서버에 접속하는 함수
@@ -41,7 +66,7 @@ async function connectMongoDb(): Promise<void> {
 /**
  * INFO: 주어진 콜렉션의 모든 문서들을 찾는다
  */
-async function findData(model: Model<Document>): Promise<Document[]> {
+async function findAllData(model: Model<Document>): Promise<Document[]> {
     return new Promise(async (resolve, reject) => {
         model.find((err, res) => {
             if (err) {
@@ -53,10 +78,42 @@ async function findData(model: Model<Document>): Promise<Document[]> {
 }
 
 /**
- * INFO: 데이터를 저장합니다.
+ * INFO: 이름으로 다큐먼트 한개 조회
+ * @param model 조회할 모델
+ * @param name 다큐먼트 name 값
+ */
+async function findOneByName(model: Model<Document>, name: string): Promise<Document> {
+    return new Promise(async (resolve, reject) => {
+        model.findOne({ name: name }, (err, res) => {
+            if (err) {
+                reject(err);
+            }
+            resolve(res);
+        });
+    });
+}
+
+/**
+ * INFO: 이름으로 모든 다큐먼트 조회
+ * @param model 조회할 모델
+ * @param name 다큐먼트 name 값
+ */
+async function findAllByName(model: Model<Document>, name: string): Promise<Document[]> {
+    return new Promise(async (resolve, reject) => {
+        model.find({ name: name }, (err, res) => {
+            if (err) {
+                reject(err);
+            }
+            resolve(res);
+        });
+    });
+}
+
+/**
+ * INFO: 콜렉션에 데이터를 저장합니다.
  * @param doc 저장할 문서
  */
-async function saveData(doc: Document): Promise<Document> {
+async function saveCollectionData(doc: Document): Promise<Document> {
     return new Promise(async (resolve, reject) => {
         doc.save((err, doc) => {
             if (err) {
@@ -85,13 +142,24 @@ async function main() {
         await connectMongoDb();
 
         let kitty = new KittenModel({
-            name: 'mk3',
+            name: 'mk7',
         });
 
-        await saveData(kitty);
+        kitty.speak();
+        KittenModel.cry();
 
-        let res = await findData(KittenModel);
+        await saveCollectionData(kitty);
+
+        let res = (await findAllData(KittenModel)) as IKittySchema[];
         console.log(res);
+
+        let res2 = (await findOneByName(KittenModel, 'mk5')) as IKittySchema;
+        console.log(res2);
+
+        let res3 = (await findAllByName(KittenModel, 'mk5')) as IKittySchema[];
+        for (let doc of res3) {
+            console.log(doc.name);
+        }
 
         await mongoose.disconnect();
     } catch (ex) {
