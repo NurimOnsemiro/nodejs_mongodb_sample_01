@@ -19,7 +19,8 @@
   "homepage": "https://github.com/NurimOnsemiro/nodejs_mongodb_sample_01#readme",
   "devDependencies": {
     "@types/mongoose": "^5.10.1",
-    "@types/node": "^14.14.9"
+    "@types/node": "^14.14.9",
+    "prettier": "^2.2.0"
   },
   "dependencies": {
     "mongoose": "^5.10.15"
