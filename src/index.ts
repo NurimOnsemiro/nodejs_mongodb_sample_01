@@ -7,6 +7,8 @@ const MONGO_URI: string = 'mongodb://127.0.0.1:27017/mam';
  */
 interface IKittySchema extends Document {
     name: string;
+    age: number;
+    birth: string;
     speak(): void;
 }
 
@@ -22,6 +24,8 @@ interface IKittyModelSchema extends Model<IKittySchema> {
  */
 const kittySchema = new Schema({
     name: { type: String, required: true },
+    age: { type: Number, required: true },
+    birth: { type: String, required: true },
 });
 
 /**
@@ -143,6 +147,8 @@ async function main() {
 
         let kitty = new KittenModel({
             name: 'mk7',
+            age: 10,
+            birth: '2020-05-01',
         });
 
         kitty.speak();
