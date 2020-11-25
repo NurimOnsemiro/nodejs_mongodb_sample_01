@@ -1,4 +1,5 @@
 import mongoose, { Connection, Document, Model, Schema } from 'mongoose';
+import autoIncrement from 'mongoose-auto-increment';
 
 const MONGO_URI: string = 'mongodb://127.0.0.1:27017/mam';
 
@@ -6,6 +7,7 @@ const MONGO_URI: string = 'mongodb://127.0.0.1:27017/mam';
  * INFO: 다큐먼트 스키마. 반드시 Document를 상속받아야 한다.
  */
 interface IKittySchema extends Document {
+    idx: number;
     name: string;
     age: number;
     birth: string;
@@ -23,6 +25,7 @@ interface IKittyModelSchema extends Model<IKittySchema> {
  * INFO: Kitten 콜렉션에 저장되는 데이터 형식 정의
  */
 const kittySchema = new Schema({
+    idx: { type: Number, required: true },
     name: { type: String, required: true },
     age: { type: Number, required: true },
     birth: { type: String, required: true },
@@ -55,15 +58,28 @@ const KittenModel = mongoose.model<IKittySchema, IKittyModelSchema>('Kitten', ki
 async function connectMongoDb(): Promise<void> {
     return new Promise(async (resolve, reject) => {
         try {
-            await mongoose.connect(MONGO_URI, {
+            let res = await mongoose.connect(MONGO_URI, {
                 useNewUrlParser: true,
                 useUnifiedTopology: true,
             });
+            autoIncrement.initialize(res.connection);
             resolve();
         } catch (ex) {
             console.error('[MongoDB Connect Error]');
             reject(ex);
         }
+    });
+}
+
+/**
+ * INFO: 특정 다큐먼트의 자동 증가 항목을 등록한다.
+ */
+function registerAutoIncrement() {
+    kittySchema.plugin(autoIncrement.plugin, {
+        model: 'Kitten',
+        field: 'idx',
+        startAt: 1,
+        increment: 1,
     });
 }
 
@@ -144,6 +160,7 @@ async function main() {
         });
 
         await connectMongoDb();
+        registerAutoIncrement();
 
         let kitty = new KittenModel({
             name: 'mk7',
