@@ -1,5 +1,7 @@
 import mongoose, { Connection, Document, Model, Schema } from 'mongoose';
 import autoIncrement from 'mongoose-auto-increment';
+import moment from 'moment';
+import { filetimeFromDate } from './utils';
 
 const MONGO_URI: string = 'mongodb://127.0.0.1:27017/mam';
 
@@ -9,8 +11,9 @@ const MONGO_URI: string = 'mongodb://127.0.0.1:27017/mam';
 interface IKittySchema extends Document {
     idx: number;
     name: string;
-    age: number;
-    birth: string;
+    age: number; //나이
+    height: number; //키 (cm)
+    birth: number; //태어난 날짜를 파일타임으로 저장
     speak(): void;
 }
 
@@ -28,7 +31,8 @@ const kittySchema = new Schema({
     idx: { type: Number, required: true },
     name: { type: String, required: true },
     age: { type: Number, required: true },
-    birth: { type: String, required: true },
+    height: { type: Number, required: true },
+    birth: { type: Number, required: true },
 });
 
 /**
@@ -144,6 +148,46 @@ async function saveCollectionData(doc: Document): Promise<Document> {
     });
 }
 
+/**
+ * INFO: 더미 데이터 삽입
+ */
+async function insertDummyData(numData: number) {
+    for (let i = 0; i < numData; i++) {
+        if (i % 50 === 0) {
+            console.log(`Inserting dummy data... (${i}/${numData})`);
+        }
+
+        let kitty = new KittenModel({
+            name: moment().format('YYYYMMDDHHmmssSSS'),
+            age: Math.round(Math.random() * 1000),
+            height: Math.round(Math.random() * 250),
+            birth: filetimeFromDate(),
+        });
+
+        await saveCollectionData(kitty);
+    }
+    console.log('insertDummyData ok.');
+}
+
+/**
+ * INFO: 개수 조회
+ */
+async function findCount(model: Model<Document>, birth: number): Promise<number> {
+    return new Promise(async (resolve, reject) => {
+        //console.log('Start find count documents');
+        let query = {
+            height: { $gte: 180, $lte: 200 },
+            birth: { $gte: 132517297351830000, $lte: 132517298895810000 },
+        };
+        model.countDocuments(query, (err, count) => {
+            if (err) {
+                reject(err);
+            }
+            resolve(count);
+        });
+    });
+}
+
 async function main() {
     console.log('Start Main');
     try {
@@ -162,27 +206,36 @@ async function main() {
         await connectMongoDb();
         registerAutoIncrement();
 
-        let kitty = new KittenModel({
-            name: 'mk7',
-            age: 10,
-            birth: '2020-05-01',
-        });
+        // console.time('insertDummyData');
+        // await insertDummyData(400000);
+        // console.timeEnd('insertDummyData');
 
-        kitty.speak();
-        KittenModel.cry();
+        // let kitty = new KittenModel({
+        //     name: 'mk7',
+        //     age: 10,
+        //     birth: '2020-05-01',
+        // });
 
-        await saveCollectionData(kitty);
+        // kitty.speak();
+        // KittenModel.cry();
 
-        let res = (await findAllData(KittenModel)) as IKittySchema[];
-        console.log(res);
+        // await saveCollectionData(kitty);
 
-        let res2 = (await findOneByName(KittenModel, 'mk5')) as IKittySchema;
-        console.log(res2);
+        // let res = (await findAllData(KittenModel)) as IKittySchema[];
+        // console.log(res);
 
-        let res3 = (await findAllByName(KittenModel, 'mk5')) as IKittySchema[];
-        for (let doc of res3) {
-            console.log(doc.name);
-        }
+        // let res2 = (await findOneByName(KittenModel, 'mk5')) as IKittySchema;
+        // console.log(res2);
+
+        // let res3 = (await findAllByName(KittenModel, 'mk5')) as IKittySchema[];
+        // for (let doc of res3) {
+        //     console.log(doc.name);
+        // }
+
+        console.time('count');
+        let cnt: number = await findCount(KittenModel, 132517297351850000);
+        console.timeEnd('count');
+        console.log(`Document count : ${cnt}`);
 
         await mongoose.disconnect();
     } catch (ex) {
